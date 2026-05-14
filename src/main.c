@@ -10,6 +10,15 @@
 #include "shader.h"
 #include "mesh.h"
 
+typedef double vec2d[2];
+
+/**
+ * I really needs that much digits (51 digits)
+ * https://en.wikipedia.org/wiki/Tau_(mathematics)
+ */
+#define TAU 6.28318530717958647692528676655900576839433879875021
+#define PI 3.141592653589793238462643383279502884197169399375105 
+
 #define CHECK_ERROR_GLFW(ERR_VAL) assert(ERR_VAL == GLFW_TRUE)
 #define CHECK_OBJ_ERROR(OBJ_PTR)                \
     if (OBJ_PTR == NULL) {                      \
@@ -76,14 +85,88 @@ int main(void) {
 
     Mesh mesh = new_mesh(GL_DYNAMIC_DRAW, vertices, uvs, ARRAY_LEN(vertices, vec3), indices, ARRAY_LEN(indices, GLuint));
 
+    vec3 player_pos = { 0, 0, 0 };
+    vec2 player_dir = { 0, 0 };
+    vec2d mouse_last_pos;
+    glfwGetCursorPos(window, &mouse_last_pos[0], &mouse_last_pos[1]);
+
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+    glEnable(GL_DEPTH);
+
+    double last_mesured_time = glfwGetTime(), dt = 0;
+
     while (!glfwWindowShouldClose(window)) {
+        dt = glfwGetTime() - last_mesured_time;
+        last_mesured_time = glfwGetTime();
+
         glfwGetWindowSize(window, &win_width, &win_height);
+
+        vec3 player_input = { 0, 0, 0 };
+
+        if (glfwGetKey(window, GLFW_KEY_W)) {
+            player_input[2] += 1;
+        }
+        
+        if (glfwGetKey(window, GLFW_KEY_S)) {
+            player_input[2] -= 1;
+        }
+
+        if (glfwGetKey(window, GLFW_KEY_D)) {
+            player_input[0] += 1;
+        }
+
+        if (glfwGetKey(window, GLFW_KEY_A)) {
+            player_input[0] -= 1;
+        }
+
+        vec2d mouse_pos;
+        glfwGetCursorPos(window, &mouse_pos[0], &mouse_pos[1]);
+
+        vec2 mouse_delta;
+        mouse_delta[0] = (float)(mouse_pos[0] - mouse_last_pos[0]) * 0.05f * TAU * dt;
+        mouse_delta[1] = (float)(mouse_pos[1] - mouse_last_pos[1]) * 0.05f * TAU * dt;
+        mouse_last_pos[0] = mouse_pos[0];
+        mouse_last_pos[1] = mouse_pos[1];
+
+        glm_vec2_add(player_dir, mouse_delta, player_dir);
+
+        if (player_dir[1] < -PI / 2) {
+            player_dir[1] = -PI / 2;
+        }
+        if (player_dir[1] > PI / 2) {
+            player_dir[1] = PI / 2;
+        }
+
+        glm_vec3_rotate(player_input, player_dir[1], (vec3) { 1, 0, 0 });
+        glm_vec3_rotate(player_input, player_dir[0], (vec3) { 0, 1, 0 });
+        
+
+        for (int axis = 0; axis < 3; axis++) {
+            player_pos[axis] += 5 * player_input[axis] * dt;
+        }
+
+        mat4 projection_matrix;
+        glm_perspective(glm_rad(60), win_width / (float)win_height, 0.1f, 100.0f, projection_matrix);
+
+        mat4 model_matrix, view_matrix;
+
+        glm_mat4_identity(model_matrix);
+        glm_translate(model_matrix, (vec3) { 0, 0, 5 } );
+        
+        glm_mat4_identity(view_matrix);
+        glm_rotate(view_matrix, player_dir[1], (vec3){1, 0, 0});
+        glm_rotate(view_matrix, player_dir[0], (vec3){0, 1, 0});
+        glm_translate(view_matrix, (vec3) { -player_pos[0], -player_pos[1], player_pos[2] });
 
         glViewport(0, 0, win_width, win_height);
         glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_DEPTH_BUFFER_BIT);
 
         glUseProgram(program);
         {
+            set_matrix4x4(program, "projection_matrix", false, projection_matrix);
+            set_matrix4x4(program, "view_matrix", false, view_matrix);
+            set_matrix4x4(program, "model_matrix", false, model_matrix);
             render_mesh(&mesh);
         }
 

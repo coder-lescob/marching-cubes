@@ -3,9 +3,13 @@
 layout (location = 0) in vec3 pos;
 layout (location = 1) in vec2 uvs;
 
+uniform mat4x4 view_matrix;
+uniform mat4x4 projection_matrix;
+uniform mat4x4 model_matrix;
+
 out vec2 uv;
 
 void main() {
-    gl_Position = vec4(pos, 1.0);
+    gl_Position =  projection_matrix * view_matrix * model_matrix * vec4(pos, 1.0);
     uv = uvs;
 }
