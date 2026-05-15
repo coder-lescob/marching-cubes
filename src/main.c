@@ -80,7 +80,7 @@ int main(void) {
     glfwGetCursorPos(window, &mouse_last_pos[0], &mouse_last_pos[1]);
 
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
-    glEnable(GL_DEPTH);
+    glEnable(GL_DEPTH_TEST);
 
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 

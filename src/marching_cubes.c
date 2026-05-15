@@ -9,7 +9,7 @@ Mesh marchingcubes_polygonize_region(float (*scalar_field_function)(vec3), vec3 
         .triangles = NULL,
         .num_vertices = 0,
         .num_triangles = 0,
-        .cached_vert_uv_data = NULL,
+        .cached_data = NULL,
         .cached = false,
     };
     
@@ -52,16 +52,14 @@ void marchingcubes_polygonize_cell(struct MeshData *data, float (*scalar_field_f
         if ((edgeTable[cube_index] & (1 << i)) == 0) {
             continue;
         }
-        glm_vec3_add(corners[i], corners[(i + 1) % 4], vertices[i]);
-        glm_vec3_scale(vertices[i], 0.5f, vertices[i]);
+        interpolate_vertices(iso_level, corners[i], corners[(i + 1) % 4], values[i], values[(i + 1) % 4], vertices[i]);
     }
 
     for (int i = 0; i < 4; i++) {
         if ((edgeTable[cube_index] & (1 << (4 + i))) == 0) {
             continue;
         }
-        glm_vec3_add(corners[4 + i], corners[4 + (i + 1) % 4], vertices[4 + i]);
-        glm_vec3_scale(vertices[4 + i], 0.5f, vertices[4 + i]);
+        interpolate_vertices(iso_level, corners[4 + i], corners[4 + (i + 1) % 4], values[4 + i], values[4 + (i + 1) % 4], vertices[4 + i]);
     }
 
     for (int i = 0; i < 4; i++) {
@@ -69,8 +67,7 @@ void marchingcubes_polygonize_cell(struct MeshData *data, float (*scalar_field_f
             continue;
         }
 
-        glm_vec3_add(corners[i], corners[4 + i], vertices[8 + i]);
-        glm_vec3_scale(vertices[8 + i], 0.5f, vertices[8 + i]);
+        interpolate_vertices(iso_level, corners[i], corners[4 + i], values[i], values[4 + i], vertices[8 + i]);
     }
 
     for (int i = 0; triangulationTable[cube_index][i] != -1; i += 3) {
@@ -81,6 +78,11 @@ void marchingcubes_polygonize_cell(struct MeshData *data, float (*scalar_field_f
 
         push_triangle(data, a, b, c);
     }
+}
+
+void interpolate_vertices(float iso_level, vec3 a, vec3 b, float va, float vb, vec3 dest) {
+    float t = (iso_level - va) / (vb - va);
+    glm_vec3_lerp(a, b, t, dest);
 }
 
 /**

@@ -13,10 +13,11 @@
 struct MeshData {
     vec3   *vertices;
     vec2   *uvs;
+    vec3   *normals;
     GLuint *triangles;
     size_t num_vertices, num_triangles;
 
-    float *cached_vert_uv_data;
+    float *cached_data;
     bool cached;
 };
 
@@ -67,5 +68,10 @@ void render_mesh(Mesh *mesh);
  * pushes the triangle p1p2p3 in the meshdata `data`
  */
 void push_triangle(struct MeshData *data, vec3 p1, vec3 p2, vec3 p3);
+
+/**
+ * calculate the normals for all triangles
+ */
+void calculate_triangles_normals(vec3 *normals_buffer, vec3 *vertices, GLuint *triangles, size_t num_vertices, size_t num_triangles);
 
 #endif

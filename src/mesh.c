@@ -24,24 +24,29 @@
         exit(1);                    \
     }
 
-float *merge_vertex_and_uvs(vec3 *vertices, vec2 *uvs, size_t num_vertices) {
+float *merge_mesh_data(struct MeshData *mesh) {
     /**
      * format:
      * vertexA, uvA,
      * vertexB, uvB,
      * ...
      */
-    size_t stride = sizeof(vec3) + sizeof(vec2);
-    float *merged_data = calloc(num_vertices, stride);
+    size_t stride = 2 * sizeof(vec3) + sizeof(vec2);
+    float *merged_data = calloc(mesh->num_vertices, stride);
     CHECK_ALLOC(merged_data);
 
     // merge data
     size_t j = 0;
-    for (size_t i = 0; i < num_vertices * stride; i += stride) {
-        memcpy((char *)merged_data + i + 0, &vertices[j], sizeof(vec3));
-        memcpy((char *)merged_data + i + sizeof(vec3), &uvs[j], sizeof(vec2));
+    for (size_t i = 0; i < mesh->num_vertices * stride; i += stride) {
+        memcpy((char *)merged_data + i + 0, &mesh->vertices[j], sizeof(vec3));
+        memcpy((char *)merged_data + i + sizeof(vec3), &mesh->uvs[j], sizeof(vec2));
+        memcpy((char *)merged_data + i + sizeof(vec3) + sizeof(vec2), &mesh->normals[j], sizeof(vec3));
         j++;
     }
+
+    // cache the data
+    mesh->cached_data = merged_data;
+    mesh->cached = true;
 
     return merged_data;
 }
@@ -67,16 +72,16 @@ Mesh new_mesh(GLenum mesh_kind, struct MeshData *mesh_data) {
          * vertexB, uvB,
          * ...
          */
-        size_t stride = sizeof(vec3) + sizeof(vec2);
+        size_t stride = 2 * sizeof(vec3) + sizeof(vec2);
         {
             float *data;
 
             if (mesh_data->cached) {
-                data = mesh_data->cached_vert_uv_data;
+                data = mesh_data->cached_data;
             }
             else {
                 // merge the vertices and uvs together
-                data = merge_vertex_and_uvs(mesh_data->vertices, mesh_data->uvs, mesh_data->num_vertices);
+                data = merge_mesh_data(mesh_data);
             }
 
             if (data == NULL) {
@@ -90,7 +95,7 @@ Mesh new_mesh(GLenum mesh_kind, struct MeshData *mesh_data) {
             
             // cache data
             if (!mesh_data->cached) {
-                mesh_data->cached_vert_uv_data = data;
+                mesh_data->cached_data = data;
                 mesh_data->cached = true;
             }
         }
@@ -102,8 +107,10 @@ Mesh new_mesh(GLenum mesh_kind, struct MeshData *mesh_data) {
         // The GPU is extreamly dumb, so we must explain the format to it
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void *)0);
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride, (void *)sizeof(vec3));
+        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, stride, (void *)(sizeof(vec3) + sizeof(vec2)));
         glEnableVertexAttribArray(0);
         glEnableVertexAttribArray(1);
+        glEnableVertexAttribArray(2);
     }
     glBindVertexArray(0);
 
@@ -147,28 +154,30 @@ struct MeshData new_mesh_data(
     CHECK_ALLOC(mesh_vertices);
     vec2 *mesh_uvs = calloc(num_vertices, sizeof(vec2));
     CHECK_ALLOC(mesh_uvs);
+    vec3 *mesh_normals = calloc(num_vertices, sizeof(vec3));
+    CHECK_ALLOC(mesh_normals);
     GLuint *mesh_triangles = calloc(num_triangles, sizeof(GLuint));
     CHECK_ALLOC(mesh_triangles);
 
     // copy the data
     memcpy(mesh_vertices, vertices, num_vertices * sizeof(vec3));
     memcpy(mesh_uvs, uvs, num_vertices * sizeof(vec2));
+    calculate_triangles_normals(mesh_normals, vertices, triangles, num_vertices, num_triangles);
     memcpy(mesh_triangles, triangles, num_triangles * sizeof(GLuint));
 
-    // cache the data
-    float *cached_data = merge_vertex_and_uvs(mesh_vertices, mesh_uvs, num_vertices);
-
-    return (struct MeshData) {
+    struct MeshData out = {
         .vertices  = mesh_vertices,
         .uvs       = mesh_uvs,
+        .normals   = mesh_normals,
         .triangles = mesh_triangles,
         
         .num_vertices  = num_vertices,
         .num_triangles = num_triangles,
-
-        .cached_vert_uv_data = cached_data,
-        .cached              = true
     };
+
+    merge_mesh_data(&out);
+
+    return out;
 }
 
 void free_mesh_data(struct MeshData *mesh_data) {
@@ -177,7 +186,7 @@ void free_mesh_data(struct MeshData *mesh_data) {
     NO_DANGLE_FREE(mesh_data->vertices);
     NO_DANGLE_FREE(mesh_data->uvs);
     NO_DANGLE_FREE(mesh_data->triangles);
-    NO_DANGLE_FREE(mesh_data->cached_vert_uv_data);
+    NO_DANGLE_FREE(mesh_data->cached_data);
 
     mesh_data->cached = false;
     mesh_data->num_vertices  = 0;
@@ -190,12 +199,12 @@ void update_mesh(Mesh *mesh, struct MeshData *mesh_data) {
     glBindVertexArray(mesh->VAO);
     {
         float *data;
-        size_t stride = sizeof(vec3) + sizeof(vec2);
+        size_t stride = 2 * sizeof(vec3) + sizeof(vec2);
         if (mesh_data->cached) {
-            data = mesh_data->cached_vert_uv_data;
+            data = mesh_data->cached_data;
         }
         else {
-            data = merge_vertex_and_uvs(mesh_data->vertices, mesh_data->uvs, mesh_data->num_vertices);
+            data = merge_mesh_data(mesh_data);
         }
 
         // update the buffer
@@ -233,34 +242,71 @@ void render_mesh(Mesh *mesh) {
 }
 
 void push_triangle(struct MeshData *data, vec3 p1, vec3 p2, vec3 p3) {
+
     vec3 *new_vertices = realloc(data->vertices, (data->num_vertices + 3) * sizeof(vec3));
     vec2 *new_uvs = realloc(data->uvs, (data->num_vertices + 3) * sizeof(vec2));
+    vec3 *new_normals = realloc(data->normals, (data->num_vertices + 3) * sizeof(vec3));
     GLuint *new_triangles = realloc(data->triangles, (data->num_triangles + 3) * sizeof(GLuint));
 
-    if (new_vertices == NULL || new_uvs == NULL || new_triangles == NULL) {
+    if (new_vertices == NULL || new_uvs == NULL || new_triangles == NULL || new_normals == NULL) {
         perror("triangle push failed: reallocation failed");
         exit(1);
     }
 
     // vertices
-    memcpy(new_vertices[data->num_vertices + 0], p1, sizeof(vec3));
-    memcpy(new_vertices[data->num_vertices + 1], p2, sizeof(vec3));
-    memcpy(new_vertices[data->num_vertices + 2], p3, sizeof(vec3));
+    glm_vec3_copy(p1, new_vertices[data->num_vertices + 0]);
+    glm_vec3_copy(p2, new_vertices[data->num_vertices + 1]);
+    glm_vec3_copy(p3, new_vertices[data->num_vertices + 2]);
 
     // uvs, for now allays 0, 0
     vec2 null_vec2 = { 0, 0 };
-    memcpy(new_uvs[data->num_vertices + 0], null_vec2, sizeof(vec2));
-    memcpy(new_uvs[data->num_vertices + 1], null_vec2, sizeof(vec2));
-    memcpy(new_uvs[data->num_vertices + 2], null_vec2, sizeof(vec2));
+    glm_vec2_copy(null_vec2, new_uvs[data->num_vertices + 0]);
+    glm_vec2_copy(null_vec2, new_uvs[data->num_vertices + 1]);
+    glm_vec2_copy(null_vec2, new_uvs[data->num_vertices + 2]);
 
     // triangles
     new_triangles[data->num_triangles + 0] = data->num_vertices + 0;
     new_triangles[data->num_triangles + 1] = data->num_vertices + 1;
     new_triangles[data->num_triangles + 2] = data->num_vertices + 2;
+    
+    // compute the normal of this triangle
+    calculate_triangles_normals(new_normals, new_vertices, new_triangles, data->num_vertices + 3, data->num_triangles + 3);
 
     data->vertices = new_vertices;
     data->uvs      = new_uvs;
+    data->normals  = new_normals;
     data->triangles = new_triangles;
     data->num_vertices += 3;
     data->num_triangles += 3;
+
+    // recache all the data when possible please
+    NO_DANGLE_FREE(data->cached_data);
+    data->cached = false;
+}
+
+void calculate_triangles_normals(vec3 *normals_buffer, vec3 *vertices, GLuint *triangles, size_t num_vertices, size_t num_triangles) {
+    for (size_t i = 0; i < num_triangles; i += 3) {
+        // get the triangles vertices
+        GLuint a = triangles[i + 0];
+        GLuint b = triangles[i + 1];
+        GLuint c = triangles[i + 2];
+
+        if (a >= num_vertices || b >= num_vertices || c >= num_vertices) {
+            fprintf(stderr, "triangle points to outside of the shape\n");
+            exit(1);
+        }
+
+        // compute the sides
+        vec3 ab, bc, ac;
+        glm_vec3_sub(vertices[b], vertices[a], ab);
+        glm_vec3_sub(vertices[c], vertices[b], bc);
+        glm_vec3_sub(vertices[c], vertices[a], ac);
+
+        // then use the cross product to get the normal vector
+        glm_vec3_cross(ab, ac, normals_buffer[a]);
+        glm_vec3_normalize(normals_buffer[a]);
+
+        glm_vec3_copy(normals_buffer[a], normals_buffer[b]);
+        glm_vec3_copy(normals_buffer[a], normals_buffer[c]);
+    }
 }
