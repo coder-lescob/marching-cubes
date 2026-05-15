@@ -24,6 +24,7 @@ Mesh marchingcubes_polygonize_region(float (*scalar_field_function)(vec3), vec3 
 }
 
 void marchingcubes_polygonize_cell(struct MeshData *data, float (*scalar_field_function)(vec3), vec3 orgine, float cube_size, float iso_level) {
+    // yes I inlined it because else it didn't work !
     vec3 corners[8] = {
         {orgine[0]            , orgine[1]            , orgine[2]            },
         {orgine[0] + cube_size, orgine[1]            , orgine[2]            },
@@ -34,17 +35,25 @@ void marchingcubes_polygonize_cell(struct MeshData *data, float (*scalar_field_f
         {orgine[0] + cube_size, orgine[1] + cube_size, orgine[2] + cube_size},
         {orgine[0]            , orgine[1] + cube_size, orgine[2] + cube_size},
     };
+
+    // compute the values at the edge of the cube
     float values[8];
     for (int i = 0; i < 8; i++) {
         values[i] = scalar_field_function(corners[i]);
     }
 
+    // get the cube configuration
     int cube_index = 0;
     for (int i = 0; i < 8; i++) {
         cube_index |= ((values[i] < iso_level) << i);
     }
 
+    // nothing to draw
     if (edgeTable[cube_index] == 0) return;
+
+    /**
+     * TODO: find a better way to compute the vertices
+     */
 
     vec3 vertices[12];
 

@@ -141,7 +141,7 @@ int main(void) {
         mat4 model_matrix, view_matrix;
 
         glm_mat4_identity(model_matrix);
-        glm_translate(model_matrix, (vec3) { 0, 0, -5 } );
+        glm_translate(model_matrix, (vec3) { 0, 0, -10 } );
         
         glm_mat4_identity(view_matrix);
         glm_rotate(view_matrix, player_dir[1], (vec3){1, 0, 0});
