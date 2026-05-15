@@ -3,7 +3,8 @@
 
 #include "mesh.h"
 
-extern const int edgeTable[256];
+extern const int edgeCornerATable[12];
+extern const int edgeCornerBTable[12];
 extern const int triangulationTable[256][16];
 
 /**
