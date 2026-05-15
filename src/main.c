@@ -9,6 +9,7 @@
 
 #include "shader.h"
 #include "mesh.h"
+#include "marching_cubes.h"
 
 typedef double vec2d[2];
 
@@ -49,6 +50,12 @@ void init(GLFWwindow **window) {
     }
 }
 
+float field_function(vec3 v) {
+    vec3 center = { 5, 5, 5 };
+    glm_vec3_sub(v, center, v);
+    return v[0] * v[0] + v[1] * v[1] + v[2] * v[2] - 25;
+}
+
 int main(void) {
     GLFWwindow *window;
     int win_width, win_height;
@@ -63,27 +70,9 @@ int main(void) {
         program = create_and_link_program(shaders, 2);
     }
 
-    // vertex data from https://learnopengl.com/Getting-started/Hello-Triangle, for testing
-    vec3 vertices[] = {
-        {  0.5f,  0.5f, 0.0f },  // top right
-        {  0.5f, -0.5f, 0.0f },  // bottom right
-        { -0.5f, -0.5f, 0.0f },  // bottom left
-        { -0.5f,  0.5f, 0.0f },  // top left 
-    };
-
-    vec2 uvs[] = {
-        { 1.0f, 1.0f },
-        { 1.0f, 0.0f },
-        { 0.0f, 0.0f },
-        { 0.0f, 1.0f },
-    };
-
-    GLuint indices[] = {
-        0, 1, 3,   // first triangle
-        1, 2, 3    // second triangle
-    };
-
-    Mesh mesh = new_mesh(GL_DYNAMIC_DRAW, vertices, uvs, ARRAY_LEN(vertices, vec3), indices, ARRAY_LEN(indices, GLuint));
+    vec3 null_vec3 = { 0, 0, 0 };
+    vec3 size      = { 25, 25, 25 };
+    Mesh mesh = marchingcubes_polygonize_region(field_function, null_vec3, size, 1.0f, 0);
 
     vec3 player_pos = { 0, 0, 0 };
     vec2 player_dir = { 0, 0 };
@@ -92,6 +81,8 @@ int main(void) {
 
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
     glEnable(GL_DEPTH);
+
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
     double last_mesured_time = glfwGetTime(), dt = 0;
 
@@ -122,7 +113,7 @@ int main(void) {
         vec2d mouse_pos;
         glfwGetCursorPos(window, &mouse_pos[0], &mouse_pos[1]);
 
-        vec2 mouse_delta;
+        vec2 mouse_delta = {0, 0};
         mouse_delta[0] = (float)(mouse_pos[0] - mouse_last_pos[0]) * 0.05f * TAU * dt;
         mouse_delta[1] = (float)(mouse_pos[1] - mouse_last_pos[1]) * 0.05f * TAU * dt;
         mouse_last_pos[0] = mouse_pos[0];
@@ -136,11 +127,10 @@ int main(void) {
         if (player_dir[1] > PI / 2) {
             player_dir[1] = PI / 2;
         }
-
+        
         glm_vec3_rotate(player_input, player_dir[1], (vec3) { 1, 0, 0 });
         glm_vec3_rotate(player_input, player_dir[0], (vec3) { 0, 1, 0 });
         
-
         for (int axis = 0; axis < 3; axis++) {
             player_pos[axis] += 5 * player_input[axis] * dt;
         }
@@ -151,7 +141,7 @@ int main(void) {
         mat4 model_matrix, view_matrix;
 
         glm_mat4_identity(model_matrix);
-        glm_translate(model_matrix, (vec3) { 0, 0, 5 } );
+        glm_translate(model_matrix, (vec3) { 0, 0, -5 } );
         
         glm_mat4_identity(view_matrix);
         glm_rotate(view_matrix, player_dir[1], (vec3){1, 0, 0});

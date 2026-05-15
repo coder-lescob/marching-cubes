@@ -10,6 +10,16 @@
 
 #include <cglm/cglm.h>
 
+struct MeshData {
+    vec3   *vertices;
+    vec2   *uvs;
+    GLuint *triangles;
+    size_t num_vertices, num_triangles;
+
+    float *cached_vert_uv_data;
+    bool cached;
+};
+
 typedef struct Mesh {
     // dynamic_draw / static_draw / stream_draw
     GLenum mesh_kind;
@@ -22,8 +32,7 @@ typedef struct Mesh {
 /**
  * creates a new mesh to have this data.
  */
-Mesh new_mesh(GLenum mesh_kind, vec3 *vertices, vec2 *uvs, size_t num_vertices, 
-    GLuint *triangles, size_t num_triangles);
+Mesh new_mesh(GLenum mesh_kind, struct MeshData *mesh_data);
 
 /**
  * frees the mesh by destroying all opengl objs
@@ -31,20 +40,32 @@ Mesh new_mesh(GLenum mesh_kind, vec3 *vertices, vec2 *uvs, size_t num_vertices,
 void free_mesh(Mesh *mesh);
 
 /**
- * updates the vertices of the mesh
+ * create a new mesh data
+ * @note this function does cache the compined vertices and uvs for speed
  */
-void update_vertices(Mesh *mesh, GLintptr offset, vec3 *vertices, 
-    vec2 *uvs, size_t num_vertices);
+struct MeshData new_mesh_data(
+    vec3 *vertices, vec2 *uvs, GLuint *triangles,
+    size_t num_vertices, size_t num_triangles
+);
 
 /**
- * updates the triangles of the mesh
+ * free the mesh data
  */
-void update_triangles(Mesh *mesh, GLintptr offset, 
-    GLuint *triangles, size_t num_triangles);
+void free_mesh_data(struct MeshData *mesh_data);
+
+/**
+ * updates the mesh
+ */
+void update_mesh(Mesh *mesh, struct MeshData *mesh_data);
 
 /**
  * renders the mesh using program currently in use
  */
 void render_mesh(Mesh *mesh);
+
+/**
+ * pushes the triangle p1p2p3 in the meshdata `data`
+ */
+void push_triangle(struct MeshData *data, vec3 p1, vec3 p2, vec3 p3);
 
 #endif
