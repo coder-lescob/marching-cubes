@@ -4,7 +4,7 @@ I implmented marching cubes in C with opengl and glfw. But what is marching cube
 
 ## What is it ?
 
-Marching cubes is an algirthm that turns a scalar field into a mesh so that it can be drawn.
+Marching cubes is an algorithm that turns a scalar field into a mesh so that it can be drawn.
 
 ![Scalar field example](Scalar_field.png)
 
