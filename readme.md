@@ -19,3 +19,7 @@ Then the fancy part: do it for all cubes and you done, well if you used the corr
 ## who care of marching cubes ?
 
 Well in the first place the marching cubes algrithm was invented by William E. Lorensen and Harvey E. Cline with the purpose of visualizing the results of medical scans. So it is not useless, but in fact it way more usefull than this, it can be use to create terrain out of 3D noise in games, more info [there](https://en.wikipedia.org/wiki/Marching_cubes)
+
+## I have currently set it to render noise
+
+I used [this repo](https://github.com/czinn/perlin) for the noise, thanks.

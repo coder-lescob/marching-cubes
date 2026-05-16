@@ -7,7 +7,7 @@ LD_FLAGS 		:= $$(pkg-config --libs glfw3) $$(pkg-config --libs gl) $$(pkg-config
 BUILD_DIR 	:= build
 SRC_DIR		:= src
 
-SRC    := $(wildcard $(SRC_DIR)/*.c)
+SRC    := $(wildcard $(SRC_DIR)/*.c) $(wildcard $(SRC_DIR)/*/*.c)
 TARGET := $(BUILD_DIR)/marching_cubes
 
 .PHONY: build

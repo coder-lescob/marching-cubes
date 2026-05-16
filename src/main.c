@@ -11,6 +11,7 @@
 #include "shader.h"
 #include "mesh.h"
 #include "marching_cubes.h"
+#include "noise/perlin.h"
 
 typedef double vec2d[2];
 
@@ -52,13 +53,8 @@ void init(GLFWwindow **window) {
 }
 
 float field_function(vec3 v) {
-    vec3 centerA = { 10, 10, 10 };
-    vec3 dstA;
-    glm_vec3_sub(v, centerA, dstA);
-    vec3 centerB = { 17, 17, 17 };
-    vec3 dstB;
-    glm_vec3_sub(v, centerB, dstB);
-    return fminf(fminf(glm_dot(dstA, dstA) - 25, glm_dot(dstB, dstB) - 35), v[1] - 2);
+    // test noise of https://github.com/czinn/perlin
+    return pnoise3d(v[0], v[1], v[2], 0.7, 5, 12124);
 }
 
 int main(void) {
