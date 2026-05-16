@@ -66,7 +66,6 @@ void main() {
     if (cubeIndex == 0 || cubeIndex == 255)
         return;
 
-
     for (int i = 0; triangulationTable[cubeIndex][i] != -1; i += 3) {
         int a0 = edgeCornerATable[triangulationTable[cubeIndex][i + 0]];
         int b0 = edgeCornerBTable[triangulationTable[cubeIndex][i + 0]];
