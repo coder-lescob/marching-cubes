@@ -14,5 +14,5 @@ out vec3 normal;
 void main() {
     gl_Position =  projection_matrix * view_matrix * model_matrix * vec4(pos, 1.0);
     uv = uvs;
-    normal = (model_matrix * vec4(normals, 1.0)).xyz;
+    normal = normals;
 }

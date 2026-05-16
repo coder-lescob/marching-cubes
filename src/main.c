@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <math.h>
 
 // opengl and glfw
 #include <GL/glew.h>
@@ -51,9 +52,13 @@ void init(GLFWwindow **window) {
 }
 
 float field_function(vec3 v) {
-    vec3 center = { 5, 5, 5 };
-    glm_vec3_sub(v, center, v);
-    return v[0] * v[0] + v[1] * v[1] + v[2] * v[2] - 25;
+    vec3 centerA = { 10, 10, 10 };
+    vec3 dstA;
+    glm_vec3_sub(v, centerA, dstA);
+    vec3 centerB = { 17, 17, 17 };
+    vec3 dstB;
+    glm_vec3_sub(v, centerB, dstB);
+    return fminf(glm_dot(dstA, dstA) - 25, glm_dot(dstB, dstB) - 35) - v[1];
 }
 
 int main(void) {
@@ -73,6 +78,7 @@ int main(void) {
     vec3 null_vec3 = { 0, 0, 0 };
     vec3 size      = { 25, 25, 25 };
     Mesh mesh = marchingcubes_polygonize_region(field_function, null_vec3, size, 1.0f, 0);
+    printf("num_triangles: %ld\n", mesh.num_triangles);
 
     vec3 player_pos = { 0, 0, 0 };
     vec2 player_dir = { 0, 0 };
@@ -81,8 +87,6 @@ int main(void) {
 
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
     glEnable(GL_DEPTH_TEST);
-
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
     double last_mesured_time = glfwGetTime(), dt = 0;
 
@@ -114,11 +118,12 @@ int main(void) {
         glfwGetCursorPos(window, &mouse_pos[0], &mouse_pos[1]);
 
         vec2 mouse_delta = {0, 0};
-        mouse_delta[0] = (float)(mouse_pos[0] - mouse_last_pos[0]) * 0.05f * TAU * dt;
-        mouse_delta[1] = (float)(mouse_pos[1] - mouse_last_pos[1]) * 0.05f * TAU * dt;
+        mouse_delta[0] = (float)(mouse_pos[0] - mouse_last_pos[0]);
+        mouse_delta[1] = (float)(mouse_pos[1] - mouse_last_pos[1]);
         mouse_last_pos[0] = mouse_pos[0];
         mouse_last_pos[1] = mouse_pos[1];
 
+        glm_vec2_scale(mouse_delta, 0.05f * TAU * dt, mouse_delta);
         glm_vec2_add(player_dir, mouse_delta, player_dir);
 
         if (player_dir[1] < -PI / 2) {
@@ -141,7 +146,7 @@ int main(void) {
         mat4 model_matrix, view_matrix;
 
         glm_mat4_identity(model_matrix);
-        glm_translate(model_matrix, (vec3) { 0, 0, -10 } );
+        glm_translate(model_matrix, (vec3) { -10, -10, -10 } );
         
         glm_mat4_identity(view_matrix);
         glm_rotate(view_matrix, player_dir[1], (vec3){1, 0, 0});
