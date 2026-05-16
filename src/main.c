@@ -58,7 +58,7 @@ float field_function(vec3 v) {
     vec3 centerB = { 17, 17, 17 };
     vec3 dstB;
     glm_vec3_sub(v, centerB, dstB);
-    return fminf(glm_dot(dstA, dstA) - 25, glm_dot(dstB, dstB) - 35) - v[1];
+    return fminf(fminf(glm_dot(dstA, dstA) - 25, glm_dot(dstB, dstB) - 35), v[1] - 2);
 }
 
 int main(void) {
