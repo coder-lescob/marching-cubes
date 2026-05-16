@@ -12,6 +12,8 @@
     (MESH_PTR)->num_vertices == 0 || (MESH_PTR)->num_triangles == 0     \
  || (MESH_PTR)->VAO == 0 || (MESH_PTR)->VBO == 0 || (MESH_PTR)->EBO == 0
 
+#define TRIANGLE_SIZE (3 * sizeof(GLuint))
+
 #define NO_DANGLE_FREE(PTR) \
     if (PTR != NULL) {      \
         free(PTR);          \
@@ -102,7 +104,7 @@ Mesh new_mesh(GLenum mesh_kind, struct MeshData *mesh_data) {
 
         // send the raw triangles indices to the GPU
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh_data->num_triangles * sizeof(int), mesh_data->triangles, mesh_kind);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh_data->num_triangles * TRIANGLE_SIZE, mesh_data->triangles, mesh_kind);
         
         // The GPU is extreamly dumb, so we must explain the format to it
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void *)0);
@@ -156,14 +158,14 @@ struct MeshData new_mesh_data(
     CHECK_ALLOC(mesh_uvs);
     vec3 *mesh_normals = calloc(num_vertices, sizeof(vec3));
     CHECK_ALLOC(mesh_normals);
-    GLuint *mesh_triangles = calloc(num_triangles, sizeof(GLuint));
+    GLuint *mesh_triangles = calloc(num_triangles, TRIANGLE_SIZE);
     CHECK_ALLOC(mesh_triangles);
 
     // copy the data
     memcpy(mesh_vertices, vertices, num_vertices * sizeof(vec3));
     memcpy(mesh_uvs, uvs, num_vertices * sizeof(vec2));
     calculate_triangles_normals(mesh_normals, vertices, triangles, num_vertices, num_triangles);
-    memcpy(mesh_triangles, triangles, num_triangles * sizeof(GLuint));
+    memcpy(mesh_triangles, triangles, num_triangles * TRIANGLE_SIZE);
 
     struct MeshData out = {
         .vertices  = mesh_vertices,
@@ -220,11 +222,11 @@ void update_mesh(Mesh *mesh, struct MeshData *mesh_data) {
         // update the buffer
         if (mesh->num_triangles == mesh_data->num_triangles) {
             // faster than reallocating
-            glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, mesh_data->num_triangles * sizeof(int), mesh_data->triangles);
+            glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, mesh_data->num_triangles * TRIANGLE_SIZE, mesh_data->triangles);
         }
         else {
             // we must reallocate
-            glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh_data->num_triangles * sizeof(int), mesh_data->triangles, mesh->mesh_kind);
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh_data->num_triangles * TRIANGLE_SIZE, mesh_data->triangles, mesh->mesh_kind);
         }
     }
     glBindVertexArray(0);
@@ -236,17 +238,18 @@ void render_mesh(Mesh *mesh) {
     glBindVertexArray(mesh->VAO);
     {
         // draw the mesh as... believe me or not: triangles
-        glDrawElements(GL_TRIANGLES, mesh->num_triangles, GL_UNSIGNED_INT, (void *)0);
+        glDrawElements(GL_TRIANGLES, mesh->num_triangles * 3, GL_UNSIGNED_INT, (void *)0);
     }
     glBindVertexArray(0);
 }
 
 void push_triangle(struct MeshData *data, vec3 p1, vec3 p2, vec3 p3) {
+    if (data == NULL) return;
 
     vec3 *new_vertices = realloc(data->vertices, (data->num_vertices + 3) * sizeof(vec3));
     vec2 *new_uvs = realloc(data->uvs, (data->num_vertices + 3) * sizeof(vec2));
     vec3 *new_normals = realloc(data->normals, (data->num_vertices + 3) * sizeof(vec3));
-    GLuint *new_triangles = realloc(data->triangles, (data->num_triangles + 3) * sizeof(GLuint));
+    GLuint *new_triangles = realloc(data->triangles, (data->num_triangles + 1) * TRIANGLE_SIZE);
 
     if (new_vertices == NULL || new_uvs == NULL || new_triangles == NULL || new_normals == NULL) {
         perror("triangle push failed: reallocation failed");
@@ -265,19 +268,19 @@ void push_triangle(struct MeshData *data, vec3 p1, vec3 p2, vec3 p3) {
     glm_vec2_copy(null_vec2, new_uvs[data->num_vertices + 2]);
 
     // triangles
-    new_triangles[data->num_triangles + 0] = data->num_vertices + 0;
-    new_triangles[data->num_triangles + 1] = data->num_vertices + 1;
-    new_triangles[data->num_triangles + 2] = data->num_vertices + 2;
+    new_triangles[data->num_triangles * 3 + 0] = data->num_vertices + 0;
+    new_triangles[data->num_triangles * 3 + 1] = data->num_vertices + 1;
+    new_triangles[data->num_triangles * 3 + 2] = data->num_vertices + 2;
     
     // compute the normal of this triangle
-    calculate_triangles_normals(new_normals, new_vertices, new_triangles, data->num_vertices + 3, data->num_triangles + 3);
+    calculate_triangles_normals(new_normals, new_vertices, new_triangles, data->num_vertices + 3, data->num_triangles + 1);
 
     data->vertices = new_vertices;
     data->uvs      = new_uvs;
     data->normals  = new_normals;
     data->triangles = new_triangles;
     data->num_vertices += 3;
-    data->num_triangles += 3;
+    data->num_triangles ++;
 
     // recache all the data when possible please
     NO_DANGLE_FREE(data->cached_data);
@@ -285,7 +288,7 @@ void push_triangle(struct MeshData *data, vec3 p1, vec3 p2, vec3 p3) {
 }
 
 void calculate_triangles_normals(vec3 *normals_buffer, vec3 *vertices, GLuint *triangles, size_t num_vertices, size_t num_triangles) {
-    for (size_t i = 0; i < num_triangles; i += 3) {
+    for (size_t i = 0; i < num_triangles * 3; i += 3) {
         // get the triangles vertices
         GLuint a = triangles[i + 0];
         GLuint b = triangles[i + 1];
