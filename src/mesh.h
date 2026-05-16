@@ -10,6 +10,13 @@
 
 #include <cglm/cglm.h>
 
+#define TRIANGLE_SIZE (3 * sizeof(GLuint))
+
+struct Tri {
+    GLuint a, b, c;
+    GLuint pad;
+};
+
 struct MeshData {
     vec3   *vertices;
     vec2   *uvs;
@@ -73,5 +80,15 @@ void push_triangle(struct MeshData *data, vec3 p1, vec3 p2, vec3 p3);
  * calculate the normals for all triangles
  */
 void calculate_triangles_normals(vec3 *normals_buffer, vec3 *vertices, GLuint *triangles, size_t num_vertices, size_t num_triangles);
+
+/**
+ * pack the data
+ */
+vec3 *pack_data(vec4 *data, size_t data_len);
+
+/**
+ * pack the data
+ */
+GLuint *pack_tris(struct Tri *data, size_t data_len);
 
 #endif

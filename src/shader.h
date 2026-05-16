@@ -40,4 +40,9 @@ GLuint create_and_link_program(GLuint *shaders, size_t num_shaders);
  */
 void set_matrix4x4(GLuint program, char *name, bool transpose, mat4 value);
 
+/**
+ * preprocess the shader contents
+ */
+void *preprocess_shader(char *content);
+
 #endif

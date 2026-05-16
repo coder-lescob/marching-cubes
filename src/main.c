@@ -71,15 +71,20 @@ int main(void) {
         program = create_and_link_program(shaders, 2);
     }
 
-    vec3 null_vec3 = { 0, 0, 0 };
-    vec3 size      = { 25, 25, 25 };
-    Mesh mesh = marchingcubes_polygonize_region(field_function, null_vec3, size, 1.0f, 0);
+    GLuint marchingcubes_program;
+    {
+        GLuint marchingcubes_compute = load_and_compile_shader("src/marchingcubes/marchingcubes.glsl", GL_COMPUTE_SHADER);
+        marchingcubes_program = create_and_link_program(&marchingcubes_compute, 1);
+    }
+    
+    vec3 null_vec3      = { 0, 0, 0 };
+    vec3 marchingRegion = { 25, 25, 25 };
+
+    Mesh mesh = marchingcubes_polygonize(marchingcubes_program, null_vec3, marchingRegion, 1.0f, 0.0f);
     printf("num_triangles: %ld\n", mesh.num_triangles);
 
     vec3 player_pos = { 0, 0, 0 };
     vec2 player_dir = { 0, 0 };
-    vec2d mouse_last_pos;
-    glfwGetCursorPos(window, &mouse_last_pos[0], &mouse_last_pos[1]);
 
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
     glEnable(GL_DEPTH_TEST);
@@ -110,14 +115,11 @@ int main(void) {
             player_input[0] -= 1;
         }
 
-        vec2d mouse_pos;
-        glfwGetCursorPos(window, &mouse_pos[0], &mouse_pos[1]);
+        double dx, dy;
+        glfwGetCursorPos(window, &dx, &dy);
+        glfwSetCursorPos(window, win_width / 2.0, win_height / 2.0);
 
-        vec2 mouse_delta = {0, 0};
-        mouse_delta[0] = (float)(mouse_pos[0] - mouse_last_pos[0]);
-        mouse_delta[1] = (float)(mouse_pos[1] - mouse_last_pos[1]);
-        mouse_last_pos[0] = mouse_pos[0];
-        mouse_last_pos[1] = mouse_pos[1];
+        vec2 mouse_delta = {dx - win_width / 2.0f, dy - win_height / 2.0f};
 
         glm_vec2_scale(mouse_delta, 0.05f * TAU * dt, mouse_delta);
         glm_vec2_add(player_dir, mouse_delta, player_dir);

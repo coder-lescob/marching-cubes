@@ -12,8 +12,6 @@
     (MESH_PTR)->num_vertices == 0 || (MESH_PTR)->num_triangles == 0     \
  || (MESH_PTR)->VAO == 0 || (MESH_PTR)->VBO == 0 || (MESH_PTR)->EBO == 0
 
-#define TRIANGLE_SIZE (3 * sizeof(GLuint))
-
 #define NO_DANGLE_FREE(PTR) \
     if (PTR != NULL) {      \
         free(PTR);          \
@@ -295,6 +293,7 @@ void calculate_triangles_normals(vec3 *normals_buffer, vec3 *vertices, GLuint *t
         GLuint c = triangles[i + 2];
 
         if (a >= num_vertices || b >= num_vertices || c >= num_vertices) {
+            printf("%d %d %d\n", a, b, c);
             fprintf(stderr, "triangle points to outside of the shape\n");
             exit(1);
         }
@@ -312,4 +311,22 @@ void calculate_triangles_normals(vec3 *normals_buffer, vec3 *vertices, GLuint *t
         glm_vec3_copy(normals_buffer[a], normals_buffer[b]);
         glm_vec3_copy(normals_buffer[a], normals_buffer[c]);
     }
+}
+
+vec3 *pack_data(vec4 *data, size_t data_len) {
+    vec3 *out = calloc(data_len, sizeof(vec3));
+    for (size_t i = 0; i < data_len; i++) {
+        glm_vec3_make(data[i], out[i]);
+    }
+    return out;
+}
+
+GLuint *pack_tris(struct Tri *data, size_t data_len) {
+    GLuint *out = calloc(data_len, TRIANGLE_SIZE);
+    for (size_t i = 0, j = 0; j < data_len; i += 3, j++) {
+        out[i + 0] = data[j].a;
+        out[i + 1] = data[j].b;
+        out[i + 2] = data[j].c;
+    }
+    return out;
 }
