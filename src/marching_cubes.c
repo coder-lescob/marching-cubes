@@ -69,6 +69,16 @@ Mesh marchingcubes_polygonize(GLuint marchingcubes_program, vec3 orgine, vec3 ma
     }
 
     // create the mesh
-    struct MeshData mesh_data = new_mesh_data(pack_data(vertices, num_vertices), uvs, pack_tris(triangles, num_triangles), num_vertices, num_triangles);
-    return new_mesh(GL_DYNAMIC_DRAW, &mesh_data);
+    vec3 *packed_verts = pack_data(vertices, num_vertices);
+    GLuint *packed_tris = pack_tris(triangles, num_triangles);
+    struct MeshData mesh_data = new_mesh_data(packed_verts, uvs, packed_tris, num_vertices, num_triangles);
+    Mesh mesh = new_mesh(GL_DYNAMIC_DRAW, &mesh_data);
+    // free all unnecessairy objects
+    free_mesh_data(&mesh_data);
+    free(vertices);
+    free(triangles);
+    free(uvs);
+    free(packed_verts);
+    free(packed_tris);
+    return mesh;
 }

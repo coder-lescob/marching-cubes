@@ -185,6 +185,7 @@ void free_mesh_data(struct MeshData *mesh_data) {
 
     NO_DANGLE_FREE(mesh_data->vertices);
     NO_DANGLE_FREE(mesh_data->uvs);
+    NO_DANGLE_FREE(mesh_data->normals);
     NO_DANGLE_FREE(mesh_data->triangles);
     NO_DANGLE_FREE(mesh_data->cached_data);
 

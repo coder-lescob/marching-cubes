@@ -173,6 +173,7 @@ void *preprocess_shader(char *content) {
                 SKIP_SPACE(c);
                 expects_symbol(&c, '"');
                 char included_file[512];
+                memset(included_file, 0, 512);
                 read_until(&c, '"', included_file, sizeof(included_file));
                 expects_symbol(&c, '"');
 

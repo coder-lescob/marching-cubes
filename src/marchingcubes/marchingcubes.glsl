@@ -1,6 +1,7 @@
 #version 460
 
 #include "src/marchingcubes/marchingTables.glsl"
+#include "src/noise/perlin.glsl"
 
 layout (std430, binding = 0) buffer Verts {
     vec4[] vertices;
@@ -21,8 +22,8 @@ uniform float _IsoLevel;
 uniform uvec3 _RegionSize;
 
 float field(vec3 v) {
-    vec3 center = vec3(10, 10, 10);
-    return length(center - v) - 5;
+    float noise = pnoise3d(v.x / 5.0, v.y / 5.0, v.z / 5.0, 0.2, 5, 1654894);
+    return max(length(v - vec3(50)) - 40 + noise * 5, noise * 40);
 }
 
 vec3 interpolate_vertices(vec3 a, vec3 b, float vA, float vB) {

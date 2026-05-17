@@ -40,6 +40,7 @@ void init(GLFWwindow **window) {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_SAMPLES, 4);
 
     *window = glfwCreateWindow(480, 480, "Marching Cubes", glfwGetPrimaryMonitor(), NULL);
     CHECK_OBJ_ERROR(*window);
@@ -50,11 +51,6 @@ void init(GLFWwindow **window) {
         fprintf(stderr, "Failed to initialize GLEW\n");
         exit(1);
     }
-}
-
-float field_function(vec3 v) {
-    // test noise of https://github.com/czinn/perlin
-    return pnoise3d(v[0], v[1], v[2], 0.7, 5, 12124);
 }
 
 int main(void) {
@@ -78,16 +74,18 @@ int main(void) {
     }
     
     vec3 null_vec3      = { 0, 0, 0 };
-    vec3 marchingRegion = { 25, 25, 25 };
+    vec3 marchingRegion = { 100, 100, 100 };
 
     Mesh mesh = marchingcubes_polygonize(marchingcubes_program, null_vec3, marchingRegion, 1.0f, 0.0f);
     printf("num_triangles: %ld\n", mesh.num_triangles);
 
     vec3 player_pos = { 0, 0, 0 };
     vec2 player_dir = { 0, 0 };
+    glfwSetCursorPos(window, win_width / 2.0, win_height / 2.0);
 
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_MULTISAMPLE);  
 
     double last_mesured_time = glfwGetTime(), dt = 0;
 
@@ -144,7 +142,7 @@ int main(void) {
         mat4 model_matrix, view_matrix;
 
         glm_mat4_identity(model_matrix);
-        glm_translate(model_matrix, (vec3) { -10, -10, -10 } );
+        glm_translate(model_matrix, (vec3) { -50, -50, -50 } );
         
         glm_mat4_identity(view_matrix);
         glm_rotate(view_matrix, player_dir[1], (vec3){1, 0, 0});
