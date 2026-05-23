@@ -23,7 +23,7 @@ uniform uvec3 _RegionSize;
 
 float field(vec3 v) {
     float noise = pnoise3d(v.x / 5.0, v.y / 5.0, v.z / 5.0, 0.2, 5, 1654894);
-    return max(length(v - vec3(50)) - 40 + noise * 5, noise * 40);
+    return noise;
 }
 
 vec3 interpolate_vertices(vec3 a, vec3 b, float vA, float vB) {
