@@ -74,12 +74,20 @@ int main(void) {
         GLuint marchingcubes_compute = load_and_compile_shader("src/marchingcubes/marchingcubes.glsl", GL_COMPUTE_SHADER);
         marchingcubes_program = create_and_link_program(&marchingcubes_compute, 1);
     }
-    
+
     vec3 null_vec3      = { 0, 0, 0 };
     vec3 marchingRegion = { 100, 100, 100 };
 
     Mesh mesh = marchingcubes_polygonize(marchingcubes_program, null_vec3, marchingRegion, 1.0f, 0.0f);
     printf("num_triangles: %ld\n", mesh.num_triangles);
+    
+    GLuint postprocessing_program;
+    {
+        GLuint vertex_shader = load_and_compile_shader("src/shaders/postprocess.vert", GL_VERTEX_SHADER);
+        GLuint fragment_shader = load_and_compile_shader("src/shaders/postprocess.frag", GL_FRAGMENT_SHADER);
+        GLuint shaders[2] = { vertex_shader, fragment_shader };
+        postprocessing_program = create_and_link_program(shaders, 2);
+    }
 
     struct Player player = {
         .pos = { 0, 0, 0 },
@@ -87,7 +95,7 @@ int main(void) {
         // identity matrix
         .view_matrix = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}},
     };
-    
+
     glfwSetCursorPos(window, win_width / 2.0, win_height / 2.0);
 
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
@@ -95,6 +103,65 @@ int main(void) {
     glEnable(GL_MULTISAMPLE);  
 
     double last_mesured_time = glfwGetTime(), dt = 0;
+    glfwGetWindowSize(window, &win_width, &win_height);
+
+    vec3 quad_vertices[] = {
+        { -1.0f, -1.0f, 0.0f },
+        {  1.0f, -1.0f, 0.0f },
+        {  1.0f,  1.0f, 0.0f },
+        { -1.0f,  1.0f, 0.0f },
+    };
+
+    vec2 quad_uvs[] = {
+        { 0.0f, 0.0f },
+        { 1.0f, 0.0f },
+        { 1.0f, 1.0f },
+        { 0.0f, 1.0f },
+    };
+
+    GLuint quad_tris[] = {
+        0, 1, 2,
+        0, 2, 3,
+    };
+
+    struct MeshData quad_data = new_mesh_data(quad_vertices, quad_uvs, quad_tris, 4, 2);
+    Mesh quad_mesh = new_mesh(GL_STATIC_DRAW, &quad_data);
+
+    GLuint fbo, rbo, target_texture;
+    glGenFramebuffers(1, &fbo);
+    glGenTextures(1, &target_texture);
+    glGenRenderbuffers(1, &rbo);
+
+    glBindRenderbuffer(GL_RENDERBUFFER, rbo); 
+    glBindTexture(GL_TEXTURE_2D, target_texture);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    {
+        printf("%dx%d\n", win_width, win_height);
+
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, win_width, win_height);
+
+        // frame buffer init
+        // texture init
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, win_width, win_height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        // attach the texture to the frame buffer
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, target_texture, 0);
+        
+        // attach the render object to the frame buffer
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
+        
+        // check for completion
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+            fprintf(stderr, "frame buffer initialitialization failed\n");
+            exit(1);
+        }
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glBindRenderbuffer(GL_RENDERBUFFER, 0); 
 
     while (!glfwWindowShouldClose(window)) {
         dt = glfwGetTime() - last_mesured_time;
@@ -113,15 +180,31 @@ int main(void) {
         glm_translate(model_matrix, (vec3) { -50, -50, -50 } );
 
         glViewport(0, 0, win_width, win_height);
-        glClear(GL_COLOR_BUFFER_BIT);
-        glClear(GL_DEPTH_BUFFER_BIT);
 
-        glUseProgram(program);
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
         {
-            set_matrix4x4(program, "projection_matrix", false, projection_matrix);
-            set_matrix4x4(program, "view_matrix", false, player.view_matrix);
-            set_matrix4x4(program, "model_matrix", false, model_matrix);
-            render_mesh(&mesh);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            glEnable(GL_DEPTH_TEST);
+
+            glUseProgram(program);
+            {
+                set_matrix4x4(program, "projection_matrix", false, projection_matrix);
+                set_matrix4x4(program, "view_matrix", false, player.view_matrix);
+                set_matrix4x4(program, "model_matrix", false, model_matrix);
+                render_mesh(&mesh);
+            }
+        }
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+        glClear(GL_COLOR_BUFFER_BIT);
+        glDisable(GL_DEPTH_TEST);
+        glUseProgram(postprocessing_program);
+        {
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, target_texture);
+            glUniform1i(glGetUniformLocation(postprocessing_program, "screenTexture"), 0);
+
+            render_mesh(&quad_mesh);
         }
 
         glfwSwapBuffers(window);
@@ -134,6 +217,7 @@ int main(void) {
 
     glDeleteProgram(program);
     free_mesh(&mesh);
+    glDeleteFramebuffers(1, &fbo);
 
     glfwDestroyWindow(window);
 }
