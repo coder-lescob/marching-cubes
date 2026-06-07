@@ -13,6 +13,8 @@
 #include "marching_cubes.h"
 #include "noise/perlin.h"
 
+#include "player.h"
+
 typedef double vec2d[2];
 
 /**
@@ -79,8 +81,13 @@ int main(void) {
     Mesh mesh = marchingcubes_polygonize(marchingcubes_program, null_vec3, marchingRegion, 1.0f, 0.0f);
     printf("num_triangles: %ld\n", mesh.num_triangles);
 
-    vec3 player_pos = { 0, 0, 0 };
-    vec2 player_dir = { 0, 0 };
+    struct Player player = {
+        .pos = { 0, 0, 0 },
+        .dir = { 0, 0 },
+        // identity matrix
+        .view_matrix = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}},
+    };
+    
     glfwSetCursorPos(window, win_width / 2.0, win_height / 2.0);
 
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
@@ -95,59 +102,15 @@ int main(void) {
 
         glfwGetWindowSize(window, &win_width, &win_height);
 
-        vec3 player_input = { 0, 0, 0 };
-
-        if (glfwGetKey(window, GLFW_KEY_W)) {
-            player_input[2] += 1;
-        }
-        
-        if (glfwGetKey(window, GLFW_KEY_S)) {
-            player_input[2] -= 1;
-        }
-
-        if (glfwGetKey(window, GLFW_KEY_D)) {
-            player_input[0] += 1;
-        }
-
-        if (glfwGetKey(window, GLFW_KEY_A)) {
-            player_input[0] -= 1;
-        }
-
-        double dx, dy;
-        glfwGetCursorPos(window, &dx, &dy);
-        glfwSetCursorPos(window, win_width / 2.0, win_height / 2.0);
-
-        vec2 mouse_delta = {dx - win_width / 2.0f, dy - win_height / 2.0f};
-
-        glm_vec2_scale(mouse_delta, 0.05f * TAU * dt, mouse_delta);
-        glm_vec2_add(player_dir, mouse_delta, player_dir);
-
-        if (player_dir[1] < -PI / 2) {
-            player_dir[1] = -PI / 2;
-        }
-        if (player_dir[1] > PI / 2) {
-            player_dir[1] = PI / 2;
-        }
-        
-        glm_vec3_rotate(player_input, player_dir[1], (vec3) { 1, 0, 0 });
-        glm_vec3_rotate(player_input, player_dir[0], (vec3) { 0, 1, 0 });
-        
-        for (int axis = 0; axis < 3; axis++) {
-            player_pos[axis] += 5 * player_input[axis] * dt;
-        }
+        update_player(&player, window, dt);
 
         mat4 projection_matrix;
         glm_perspective(glm_rad(60), win_width / (float)win_height, 0.1f, 100.0f, projection_matrix);
 
-        mat4 model_matrix, view_matrix;
+        mat4 model_matrix;
 
         glm_mat4_identity(model_matrix);
         glm_translate(model_matrix, (vec3) { -50, -50, -50 } );
-        
-        glm_mat4_identity(view_matrix);
-        glm_rotate(view_matrix, player_dir[1], (vec3){1, 0, 0});
-        glm_rotate(view_matrix, player_dir[0], (vec3){0, 1, 0});
-        glm_translate(view_matrix, (vec3) { -player_pos[0], -player_pos[1], player_pos[2] });
 
         glViewport(0, 0, win_width, win_height);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -156,7 +119,7 @@ int main(void) {
         glUseProgram(program);
         {
             set_matrix4x4(program, "projection_matrix", false, projection_matrix);
-            set_matrix4x4(program, "view_matrix", false, view_matrix);
+            set_matrix4x4(program, "view_matrix", false, player.view_matrix);
             set_matrix4x4(program, "model_matrix", false, model_matrix);
             render_mesh(&mesh);
         }
