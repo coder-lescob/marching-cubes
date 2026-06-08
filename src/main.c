@@ -127,13 +127,11 @@ int main(void) {
     struct MeshData quad_data = new_mesh_data(quad_vertices, quad_uvs, quad_tris, 4, 2);
     Mesh quad_mesh = new_mesh(GL_STATIC_DRAW, &quad_data);
 
-    GLuint fbo, rbo, target_texture;
+    GLuint fbo, target_texture, depth_texture;
     glGenFramebuffers(1, &fbo);
     glGenTextures(1, &target_texture);
-    glGenRenderbuffers(1, &rbo);
+    glGenTextures(1, &depth_texture);
 
-    glBindRenderbuffer(GL_RENDERBUFFER, rbo); 
-    glBindTexture(GL_TEXTURE_2D, target_texture);
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
     {
         printf("%dx%d\n", win_width, win_height);
@@ -142,17 +140,35 @@ int main(void) {
 
         // frame buffer init
         // texture init
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, win_width, win_height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+        glBindTexture(GL_TEXTURE_2D, target_texture);
+        {
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, win_width, win_height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
 
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-        // attach the texture to the frame buffer
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, target_texture, 0);
+            // attach the texture to the frame buffer
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, target_texture, 0);
+        }
+        glBindTexture(GL_TEXTURE_2D, 0);
+
+        glBindTexture(GL_TEXTURE_2D, depth_texture);
+        {
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, win_width, win_height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+            // attach the texture to the frame buffer
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depth_texture, 0);
+        }
+        glBindTexture(GL_TEXTURE_2D, 0);
         
-        // attach the render object to the frame buffer
-        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
-        
+        GLenum drawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
+        glDrawBuffers(1, drawBuffers);
+
         // check for completion
         if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
             fprintf(stderr, "frame buffer initialitialization failed\n");
@@ -160,8 +176,6 @@ int main(void) {
         }
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glBindRenderbuffer(GL_RENDERBUFFER, 0); 
 
     while (!glfwWindowShouldClose(window)) {
         dt = glfwGetTime() - last_mesured_time;
@@ -200,9 +214,15 @@ int main(void) {
         glDisable(GL_DEPTH_TEST);
         glUseProgram(postprocessing_program);
         {
+            set_matrix4x4(postprocessing_program, "projection_matrix", false, projection_matrix);
+
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, target_texture);
             glUniform1i(glGetUniformLocation(postprocessing_program, "screenTexture"), 0);
+            
+            glActiveTexture(GL_TEXTURE1);
+            glBindTexture(GL_TEXTURE_2D, depth_texture);
+            glUniform1i(glGetUniformLocation(postprocessing_program, "depthTexture"), 1);
 
             render_mesh(&quad_mesh);
         }
