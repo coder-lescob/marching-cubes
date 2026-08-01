@@ -17,9 +17,9 @@ float depth_to_linear_depth(float depth) {
 void main() {
     float depth = depth_to_linear_depth(texture(depthTexture, uv).r);
 
-    vec3 scattering_coefficients = vec3(0.0055, 0.0026, 0.0010) * 75.0;
+    vec3 scattering_coefficients = vec3(0.0055, 0.0026, 0.0010) * 500.0;
     vec3 transmittance = vec3(exp(-depth * scattering_coefficients));
     vec3 color = texture(screenTexture, uv).rgb;
 
-    FragColor = vec4(mix(color, vec3(0.0, 0.25, 0.5), transmittance), 1.0);
+    FragColor = clamp(vec4(color * transmittance, 1.0), vec4(0.0, 0.0, 0.0, 0.0), vec4(1.0, 1.0, 1.0, 1.0));
 }

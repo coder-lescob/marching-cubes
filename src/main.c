@@ -2,7 +2,7 @@
 #include <math.h>
 
 // opengl and glfw
-#include <GL/glew.h>
+#include <epoxy/gl.h>
 #include <GL/gl.h>
 #include <GLFW/glfw3.h>
 
@@ -28,13 +28,14 @@ typedef double vec2d[2];
 #define CHECK_OBJ_ERROR(OBJ_PTR)                \
     if (OBJ_PTR == NULL) {                      \
         perror(#OBJ_PTR " creation failed");    \
+        glfwTerminate();                        \
         exit(1);                                \
     }
 
 #define ARRAY_LEN(ARRAY, TYPE) (sizeof(ARRAY) / sizeof(TYPE))
 
 /**
- * inits the window and glfw and glew contexts
+ * inits the window and glfw context
  */
 void init(GLFWwindow **window) {
     CHECK_ERROR_GLFW(glfwInit());
@@ -47,12 +48,6 @@ void init(GLFWwindow **window) {
     *window = glfwCreateWindow(480, 480, "Marching Cubes", glfwGetPrimaryMonitor(), NULL);
     CHECK_OBJ_ERROR(*window);
     glfwMakeContextCurrent(*window);
-
-    glewExperimental = GL_TRUE;  // Enable experimental features for modern OpenGL
-    if (glewInit() != GLEW_OK) {
-        fprintf(stderr, "Failed to initialize GLEW\n");
-        exit(1);
-    }
 }
 
 int main(void) {
@@ -92,13 +87,12 @@ int main(void) {
     struct Player player = {
         .pos = { 0, 0, 0 },
         .dir = { 0, 0 },
-        // identity matrix
-        .view_matrix = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}},
     };
 
+    glm_mat4_identity(player.view_matrix);
     glfwSetCursorPos(window, win_width / 2.0, win_height / 2.0);
 
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_MULTISAMPLE);  
 

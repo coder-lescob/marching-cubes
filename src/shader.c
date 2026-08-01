@@ -7,7 +7,7 @@
 #include <stdbool.h>
 
 // opengl and glfw
-#include <GL/glew.h>
+#include <epoxy/gl.h>
 #include <GL/gl.h>
 #include <GLFW/glfw3.h>
 
