@@ -222,8 +222,10 @@ int main(void) {
 
         glUseProgram(postprocessing_program);
         {
+            // send the porjection matrix to unproject the depth
             set_matrix4x4(postprocessing_program, "projection_matrix", false, projection_matrix);
 
+            // send the image and depth texture
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, target_texture);
             glUniform1i(glGetUniformLocation(postprocessing_program, "screenTexture"), 0);
@@ -232,6 +234,7 @@ int main(void) {
             glBindTexture(GL_TEXTURE_2D, depth_texture);
             glUniform1i(glGetUniformLocation(postprocessing_program, "depthTexture"), 1);
 
+            // render the postprocessed image to a mesh
             render_mesh(&quad_mesh);
         }
 

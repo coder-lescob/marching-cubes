@@ -15,9 +15,11 @@ float depth_to_linear_depth(float depth) {
 }
 
 void main() {
+    // compute the depth
     float depth = depth_to_linear_depth(texture(depthTexture, uv).r);
 
-    vec3 scattering_coefficients = vec3(0.0055, 0.0026, 0.0010) * 1000.0;
+    // use the depth to blend the color
+    vec3 scattering_coefficients = vec3(0.40, 0.30, 0.05) * 50.0;
     vec3 transmittance = vec3(exp(-depth * scattering_coefficients));
     vec3 color = texture(screenTexture, uv).rgb;
 
