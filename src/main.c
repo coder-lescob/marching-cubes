@@ -44,6 +44,7 @@ typedef double vec2d[2];
  * inits the window and glfw context
  */
 void init(GLFWwindow **window) {
+    glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11); 
     CHECK_INIT_ERROR_GLFW(glfwInit());
 
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -51,7 +52,11 @@ void init(GLFWwindow **window) {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_SAMPLES, 4);
 
-    *window = glfwCreateWindow(480, 480, "Marching Cubes", NULL, NULL);
+    // get the monitor and the mode to get the true display size
+    GLFWmonitor *monitor    = glfwGetPrimaryMonitor();
+    const GLFWvidmode *mode = glfwGetVideoMode(monitor);
+
+    *window = glfwCreateWindow(mode->width, mode->height, "Marching Cubes", monitor, NULL);
     CHECK_OBJ_ERROR(*window);
     glfwMakeContextCurrent(*window);
 }
@@ -106,7 +111,7 @@ int main(void) {
     glEnable(GL_MULTISAMPLE);  
 
     double last_mesured_time = glfwGetTime(), dt = 0;
-    glfwGetWindowSize(window, &win_width, &win_height);
+    glfwGetFramebufferSize(window, &win_width, &win_height);
 
     vec3 quad_vertices[] = {
         { -1.0f, -1.0f, 0.0f },
@@ -184,7 +189,7 @@ int main(void) {
         dt = glfwGetTime() - last_mesured_time;
         last_mesured_time = glfwGetTime();
 
-        glfwGetWindowSize(window, &win_width, &win_height);
+        glfwGetFramebufferSize(window, &win_width, &win_height);
         update_player(&player, window, &mouse_move, dt);
 
         mat4 projection_matrix;
