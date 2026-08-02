@@ -4,6 +4,8 @@
 #include <GLFW/glfw3.h>
 #include <cglm/cglm.h>
 
+#include "mouse.h"
+
 struct Player {
     // the position and direction of the player
     vec3 pos;
@@ -19,7 +21,7 @@ struct Player {
  * @param window a pointer to the window
  * @param dt the amount of time between two frames
  */
-void update_player(struct Player *player, GLFWwindow *window, double dt);
+void update_player(struct Player *player, GLFWwindow *window, MouseMove *mouse_move, double dt);
 
 /**
  * update the position of the player
@@ -35,7 +37,7 @@ void update_pos(struct Player *player, GLFWwindow *window, double dt);
  * @param window a pointer to the window
  * @param dt the amount of time between two frames
  */
-void update_dir(struct Player *player, GLFWwindow *window, double dt);
+void update_dir(struct Player *player, MouseMove *mouse_move, double dt);
 
 /**
  * updates the view matrix.

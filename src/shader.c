@@ -164,7 +164,7 @@ void *preprocess_shader(char *content) {
     }
     memset(preprocessed, 0, capacity + 1);
 
-    size_t line = 0, line_width = 0;
+    size_t line_width = 0;
     for (char *c = content; *c != 0; c++) {
         if (line_width == 0) {
             // we are at the start of a line
@@ -188,7 +188,6 @@ void *preprocess_shader(char *content) {
 
         line_width++;
         if (*c == '\n') {
-            line++;
             line_width = 0;
         }
         push_char(&preprocessed, *c, &capacity);

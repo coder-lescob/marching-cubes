@@ -1,6 +1,7 @@
 #include "player.h"
 
 #include <cglm/cglm.h>
+#include "mouse.h"
 
 /**
  * I really needs that much digits (51 digits)
@@ -17,8 +18,8 @@
  * @param player a pointer to the player
  * @param window a pointer to the window
  */
-void update_player(struct Player *player, GLFWwindow *window, double dt) {
-    update_dir(player, window, dt);
+void update_player(struct Player *player, GLFWwindow *window, MouseMove *mouse_move, double dt) {
+    update_dir(player, mouse_move, dt);
     update_pos(player, window, dt);
     update_view_matrix(player);
 }
@@ -50,25 +51,19 @@ void update_pos(struct Player *player, GLFWwindow *window, double dt) {
  * @param player a pointer to the player
  * @param window a pointer to the window
  */
-void update_dir(struct Player *player, GLFWwindow *window, double dt) {
-    int win_width, win_height;
-    glfwGetWindowSize(window, &win_width, &win_height);
-
-    double dx, dy;
-    glfwGetCursorPos(window, &dx, &dy);
-    glfwSetCursorPos(window, win_width / 2.0, win_height / 2.0);
-
-    // compute the delta from the center of the screen
+void update_dir(struct Player *player, MouseMove *mouse_move, double dt) {
+    // fetch the mouse delta
     vec2 mouse_delta = {
-        dx - win_width  / 2.0f, 
-        dy - win_height / 2.0f,
+        mouse_move->dx, 
+        mouse_move->dy,
     };
 
     // scale it and rotate
-    glm_vec2_scale(mouse_delta, 0.05f * TAU * dt, mouse_delta);
+    glm_vec2_scale(mouse_delta, 0.1f * TAU * dt, mouse_delta);
     glm_vec2_add(player->dir, mouse_delta, player->dir);
 
     player->dir[1] = CLAMP(player->dir[1], -PI / 2, PI / 2);
+    mouse_move->dx = 0, mouse_move->dy = 0;
 }
 
 /**

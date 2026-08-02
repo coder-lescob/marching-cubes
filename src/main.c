@@ -14,6 +14,7 @@
 #include "noise/perlin.h"
 
 #include "player.h"
+#include "mouse.h"
 
 typedef double vec2d[2];
 
@@ -24,7 +25,12 @@ typedef double vec2d[2];
 #define TAU 6.28318530717958647692528676655900576839433879875021
 #define PI 3.141592653589793238462643383279502884197169399375105 
 
-#define CHECK_ERROR_GLFW(ERR_VAL) assert(ERR_VAL == GLFW_TRUE)
+#define CHECK_INIT_ERROR_GLFW(ERR_VAL)       \
+    if (ERR_VAL == GLFW_FALSE) {             \
+        perror("Failed to initialize glfw"); \
+        exit(1);                             \
+    }
+
 #define CHECK_OBJ_ERROR(OBJ_PTR)                \
     if (OBJ_PTR == NULL) {                      \
         perror(#OBJ_PTR " creation failed");    \
@@ -38,14 +44,14 @@ typedef double vec2d[2];
  * inits the window and glfw context
  */
 void init(GLFWwindow **window) {
-    CHECK_ERROR_GLFW(glfwInit());
+    CHECK_INIT_ERROR_GLFW(glfwInit());
 
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_SAMPLES, 4);
 
-    *window = glfwCreateWindow(480, 480, "Marching Cubes", glfwGetPrimaryMonitor(), NULL);
+    *window = glfwCreateWindow(480, 480, "Marching Cubes", NULL, NULL);
     CHECK_OBJ_ERROR(*window);
     glfwMakeContextCurrent(*window);
 }
@@ -90,9 +96,12 @@ int main(void) {
     };
 
     glm_mat4_identity(player.view_matrix);
-    glfwSetCursorPos(window, win_width / 2.0, win_height / 2.0);
 
+    MouseMove mouse_move = { 0.0, 0.0, 0.0, 0.0 };
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetWindowUserPointer(window, &mouse_move);
+    glfwSetCursorPosCallback(window, mouse_move_callback);
+
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_MULTISAMPLE);  
 
@@ -176,8 +185,7 @@ int main(void) {
         last_mesured_time = glfwGetTime();
 
         glfwGetWindowSize(window, &win_width, &win_height);
-
-        update_player(&player, window, dt);
+        update_player(&player, window, &mouse_move, dt);
 
         mat4 projection_matrix;
         glm_perspective(glm_rad(60), win_width / (float)win_height, 0.1f, 100.0f, projection_matrix);
@@ -186,9 +194,9 @@ int main(void) {
 
         glm_mat4_identity(model_matrix);
         glm_translate(model_matrix, (vec3) { -50, -50, -50 } );
-
+        
         glViewport(0, 0, win_width, win_height);
-
+        
         glBindFramebuffer(GL_FRAMEBUFFER, fbo);
         {
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -206,6 +214,7 @@ int main(void) {
 
         glClear(GL_COLOR_BUFFER_BIT);
         glDisable(GL_DEPTH_TEST);
+
         glUseProgram(postprocessing_program);
         {
             set_matrix4x4(postprocessing_program, "projection_matrix", false, projection_matrix);
